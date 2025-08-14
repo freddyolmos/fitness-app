@@ -2,6 +2,7 @@ from django.db import models
 from django.conf import settings
 from core.models import TimeStampedModel
 from nutrition.models import Ingredient, Recipe
+from core.models import MinValueValidator
 
 class DayPlan(TimeStampedModel):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
@@ -13,8 +14,8 @@ class DayPlan(TimeStampedModel):
     class Meta:
         unique_together = (("user","date"),)
 
-    def __str__(self): 
-        return self.name
+    def __str__(self):
+        return f"{self.user} · {self.date}"
 
 class Meal(TimeStampedModel):
     SLOTS=[("desayuno","Desayuno"),("colacion1","Colación 1"),
@@ -24,8 +25,8 @@ class Meal(TimeStampedModel):
     class Meta:
         unique_together = (("day_plan","slot"),)
 
-    def __str__(self): 
-        return self.name
+    def __str__(self):
+        return f"{self.get_slot_display()} · {self.day_plan.date}"
 
 class MealItem(TimeStampedModel):
     meal = models.ForeignKey(Meal, on_delete=models.CASCADE, related_name="items")
@@ -36,8 +37,8 @@ class MealItem(TimeStampedModel):
     fat_g     = models.FloatField(default=0)
     kcal      = models.FloatField(default=0)
 
-    def __str__(self): 
-        return self.name
+    def __str__(self):
+        return f"{self.recipe.name} × {self.portions}"
 
 class MealItemIngredient(TimeStampedModel):
     G="g"; ML="ml"; P="piece"
@@ -45,8 +46,8 @@ class MealItemIngredient(TimeStampedModel):
 
     meal_item = models.ForeignKey(MealItem, on_delete=models.CASCADE, related_name="ingredients")
     ingredient = models.ForeignKey(Ingredient, on_delete=models.PROTECT)
-    amount = models.FloatField()
+    amount = models.FloatField(validators=[MinValueValidator(0.0)])
     unit = models.CharField(max_length=8, choices=UNIT_CHOICES, default=G)
 
-    def __str__(self): 
-        return self.name
+    def __str__(self):
+        return f"{self.ingredient.name} ({self.amount}{self.unit})"

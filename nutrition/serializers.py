@@ -30,6 +30,10 @@ class IngredientSerializer(serializers.ModelSerializer):
         fat     = data.get("fat_g",     getattr(self.instance, "fat_g", 0) if self.instance else 0)
         kcal    = data.get("kcal",      getattr(self.instance, "kcal", 0) if self.instance else 0)
 
+        for f in ("protein_g","carbs_g","fat_g","kcal"):
+            if f in data and data[f] is not None and data[f] < 0:
+                raise serializers.ValidationError({f: "No puede ser negativo."})
+
         if (kcal is None or kcal == 0) and any([protein, carbs, fat]):
             data["kcal"] = round(protein * 4 + carbs * 4 + fat * 9, 2)
         return data

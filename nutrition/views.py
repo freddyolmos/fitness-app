@@ -47,6 +47,12 @@ class IngredientAliasViewSet(viewsets.ModelViewSet):
         return IngredientAlias.objects.filter(
             Q(ingredient__owner=user) | Q(ingredient__owner__isnull=True)
         ).select_related("ingredient")
+    
+    def perform_create(self, serializer):
+        ing = serializer.validated_data["ingredient"]
+        if ing.owner and ing.owner != self.request.user:
+            raise permissions.PermissionDenied("No puedes modificar alias de otro usuario.")
+        serializer.save()
 
 class IngredientSourceViewSet(viewsets.ModelViewSet):
     serializer_class = IngredientSourceSerializer
@@ -57,6 +63,12 @@ class IngredientSourceViewSet(viewsets.ModelViewSet):
         return IngredientSource.objects.filter(
             Q(ingredient__owner=user) | Q(ingredient__owner__isnull=True)
         ).select_related("ingredient")
+    
+    def perform_create(self, serializer):
+        ing = serializer.validated_data["ingredient"]
+        if ing.owner and ing.owner != self.request.user:
+            raise permissions.PermissionDenied("No puedes modificar fuentes de otro usuario.")
+        serializer.save()
 
 class RecipeViewSet(viewsets.ModelViewSet):
     serializer_class = RecipeSerializer

@@ -1,7 +1,8 @@
-from django.db import models
+from django.db import models, transaction
 from rest_framework import serializers
 from .models import DayPlan, Meal, MealItem, MealItemIngredient
-from .utils import calc_recipe_macros
+from .utils import calc_recipe_macros, recalc_meal_item_and_day
+from nutrition.models import RecipeIngredient
 
 class DayPlanSerializer(serializers.ModelSerializer):
     class Meta:
@@ -47,25 +48,37 @@ class MealItemSerializer(serializers.ModelSerializer):
         instance_or_data["fat_g"]     = f
         instance_or_data["kcal"]      = k
 
+    @transaction.atomic
     def create(self, validated_data):
+        meal = validated_data["meal"]
         recipe  = validated_data["recipe"]
         portions = validated_data.get("portions", 1.0)
-        
-        self._fill_macros(validated_data, recipe, portions)
+
         item = super().create(validated_data)
-        
-        self._recalc_day_totals(item.meal.day_plan)
+
+        ris = RecipeIngredient.objects.select_related("ingredient").filter(recipe=recipe)
+        bulk = []
+        for ri in ris:
+            bulk.append(MealItemIngredient(
+                meal_item=item,
+                ingredient=ri.ingredient,
+                amount=ri.amount * portions,
+                unit=ri.unit
+            ))
+        if bulk:
+            MealItemIngredient.objects.bulk_create(bulk)
+
+        recalc_meal_item_and_day(item)
         return item
 
+    @transaction.atomic
     def update(self, instance, validated_data):
-        recipe   = validated_data.get("recipe", instance.recipe)
-        portions = validated_data.get("portions", instance.portions)
-        
-        tmp = {}
-        self._fill_macros(tmp, recipe, portions)
-        for k in ["protein_g", "carbs_g", "fat_g", "kcal"]:
-            validated_data[k] = tmp[k]
+        new_portions = validated_data.get("portions", instance.portions)
+        if "portions" in validated_data and new_portions != instance.portions:
+            factor = new_portions / instance.portions if instance.portions else 1.0
+            for mii in instance.ingredients.all():
+                mii.amount = round(mii.amount * factor, 4)
+                mii.save(update_fields=["amount","updated_at"])
         item = super().update(instance, validated_data)
-        
-        self._recalc_day_totals(item.meal.day_plan)
+        recalc_meal_item_and_day(item)
         return item
