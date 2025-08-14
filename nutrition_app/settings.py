@@ -14,6 +14,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 load_dotenv()
 import os
+from datetime import timedelta
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -41,11 +42,21 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'rest_framework_simplejwt',
+    'django_filters',
     'core',
     'nutrition',
     'meals',
     'commerce',
 ]
+
+REST_FRAMEWORK = {
+    
+}
+
+SIMPLE_JWT = {
+
+}
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
