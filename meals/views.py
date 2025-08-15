@@ -1,6 +1,6 @@
 from rest_framework import viewsets, permissions, filters
-from django.db.models import Q
-from django.shortcuts import get_object_or_404
+from .utils import recalc_meal_item_and_day
+from django.db import models
 from .models import DayPlan, Meal, MealItem, MealItemIngredient
 from .serializers import (
     DayPlanSerializer, MealSerializer, MealItemSerializer, MealItemIngredientSerializer
@@ -48,22 +48,14 @@ class MealItemViewSet(viewsets.ModelViewSet):
             .filter(meal__day_plan__user=self.request.user)
 
     def perform_create(self, serializer):
-        meal_item = serializer.validated_data["meal_item"]
-        if meal_item.meal.day_plan.user != self.request.user:
-            raise permissions.PermissionDenied("No puedes modificar ingredientes de otro usuario.")
+        meal = serializer.validated_data["meal"]
+        if meal.day_plan.user != self.request.user:
+            raise permissions.PermissionDenied("Meal no pertenece al usuario autenticado.")
         instance = serializer.save()
-        from .utils import recalc_meal_item_and_day
-        recalc_meal_item_and_day(instance.meal_item)
-
-    def perform_update(self, serializer):
-        instance = serializer.save()
-        from .utils import recalc_meal_item_and_day
-        recalc_meal_item_and_day(instance.meal_item)
 
     def perform_destroy(self, instance):
         day = instance.meal.day_plan
         super().perform_destroy(instance)
-        from django.db import models
         agg = MealItem.objects.filter(meal__day_plan=day).aggregate(
             p=models.Sum("protein_g"), c=models.Sum("carbs_g"),
             f=models.Sum("fat_g"), k=models.Sum("kcal")
@@ -81,3 +73,19 @@ class MealItemIngredientViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         return MealItemIngredient.objects.select_related("meal_item", "meal_item__meal", "meal_item__meal__day_plan")\
             .filter(meal_item__meal__day_plan__user=self.request.user)
+
+    def perform_create(self, serializer):
+        meal_item = serializer.validated_data["meal_item"]
+        if meal_item.meal.day_plan.user != self.request.user:
+            raise permissions.PermissionDenied("No puedes modificar ingredientes de otro usuario.")
+        instance = serializer.save()
+        recalc_meal_item_and_day(instance.meal_item)
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        recalc_meal_item_and_day(instance.meal_item)
+
+    def perform_destroy(self, instance):
+        meal_item = instance.meal_item
+        instance.delete()
+        recalc_meal_item_and_day(meal_item)

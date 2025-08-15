@@ -1,4 +1,7 @@
 from rest_framework import viewsets, permissions, filters
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from meals.utils import calc_recipe_macros
 from django.db.models import Q
 from .models import (
     IngredientCategory, Ingredient, IngredientAlias,
@@ -86,6 +89,21 @@ class RecipeViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         owner = serializer.validated_data.get("owner") or self.request.user
         serializer.save(owner=owner)
+
+    @action(detail=True, methods=["post"], url_path="preview")
+    def preview(self, request, pk=None):
+        recipe = self.get_object()
+        portions = float(request.query_params.get("portions", request.data.get("portions", 1.0)))
+        p, c, f, k = calc_recipe_macros(recipe, portions)
+        return Response({
+            "recipe_id": recipe.id,
+            "portions": portions,
+            "protein_g": p,
+            "carbs_g": c,
+            "fat_g": f,
+            "kcal": k,
+        })
+
 
 class RecipeIngredientViewSet(viewsets.ModelViewSet):
     serializer_class = RecipeIngredientSerializer
