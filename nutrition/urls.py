@@ -13,4 +13,6 @@ router.register(r"sources", IngredientSourceViewSet, basename="ingredientsource"
 router.register(r"recipes", RecipeViewSet, basename="recipe")
 router.register(r"recipe-ingredients", RecipeIngredientViewSet, basename="recipeingredient")
 
-urlpatterns = [path("", include(router.urls))]
+urlpatterns = [
+    path("", include(router.urls)),
+    ]

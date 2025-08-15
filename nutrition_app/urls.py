@@ -31,6 +31,7 @@ from meals.views import DayPlanViewSet, MealViewSet, MealItemViewSet, MealItemIn
 from commerce.views import InventoryItemViewSet, IngredientPriceViewSet
 
 router = routers.DefaultRouter()
+router.trailing_slash = '/?' 
 
 # core
 router.register(r"user-profiles", UserProfileViewSet, basename="userprofile")
@@ -51,10 +52,11 @@ router.register(r"meal-item-ingredients", MealItemIngredientViewSet, basename="m
 router.register(r"inventory", InventoryItemViewSet, basename="inventory")
 router.register(r"ingredient-prices", IngredientPriceViewSet, basename="ingredientprice")
 
+recipe_preview_no_slash = RecipeViewSet.as_view({"post": "preview"})
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/', include("router.urls")),
+    path('api/', include(router.urls)),
     # JWT
     path("api/auth/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/auth/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),

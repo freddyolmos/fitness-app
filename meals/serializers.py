@@ -8,7 +8,7 @@ class DayPlanSerializer(serializers.ModelSerializer):
     class Meta:
         model = DayPlan
         fields = "__all__"
-        read_only_fields = ("protein_total_g", "carbs_total_g", "fat_total_g", "kcal_total")
+        read_only_fields = ("user", "protein_total_g", "carbs_total_g", "fat_total_g", "kcal_total")
 
 class MealSerializer(serializers.ModelSerializer):
     class Meta:
